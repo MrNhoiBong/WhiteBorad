@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+# Chạy wb.py trong môi trường ảo .venv (tự tạo nếu chưa có; không cần gói ngoài).
+set -e
+DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if [ ! -x "$DIR/.venv/bin/python" ]; then
+  python3 -m venv --without-pip "$DIR/.venv"
+fi
+exec "$DIR/.venv/bin/python" "$DIR/wb.py" "$@"
