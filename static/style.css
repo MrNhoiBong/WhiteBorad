@@ -132,3 +132,10 @@ code{font:12.5px var(--mono);background:color-mix(in srgb,var(--fg) 7%,transpare
 .send svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .foot{font-size:11px;color:var(--muted)}
 @media (max-width:900px){#chat{position:absolute;left:0;right:0;bottom:0;width:auto;height:60%;z-index:20;border-top:1px solid var(--line)}}
+
+/* tải file lên */
+.note .dl{display:inline-block;margin-top:6px;font:600 12px/1 var(--ui);color:var(--accent);text-decoration:none;padding:6px 10px;border-radius:99px;background:var(--accent-soft)}
+.note .dl:hover{text-decoration:underline}
+.dropzone{position:absolute;inset:12px;border:2px dashed var(--accent);border-radius:12px;background:color-mix(in srgb,var(--accent) 8%,transparent);display:flex;align-items:center;justify-content:center;pointer-events:none;z-index:50}
+.dropzone[hidden]{display:none}
+.dropzone b{font:600 16px/1 var(--ui);color:var(--accent);background:var(--accent-soft);padding:12px 18px;border-radius:99px}

@@ -15,7 +15,7 @@ import threading
 import time
 import uuid
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-from urllib.parse import parse_qs, urlparse
+from urllib.parse import parse_qs, quote, unquote, urlparse
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 STATIC = os.path.join(ROOT, "static")
@@ -23,6 +23,9 @@ STATIC = os.path.join(ROOT, "static")
 DATA = os.path.abspath(os.environ.get("WB_DATA") or os.path.join(ROOT, "data"))
 REQS = os.path.join(DATA, "requests")
 BOARD = os.path.join(DATA, "board.json")
+# file người dùng tải lên từ trình duyệt (WB_UPLOADS để đặt chỗ khác)
+UPLOADS = os.path.abspath(os.environ.get("WB_UPLOADS") or os.path.join(DATA, "uploads"))
+MAX_UPLOAD = 512 * 1024 * 1024
 
 lock = threading.RLock()
 state = {"items": {}, "chat": []}
@@ -200,6 +203,50 @@ def op_ask(body):
     return {"ok": True, "id": rid}
 
 
+# ---------- uploads ----------
+def safe_name(name):
+    name = os.path.basename(name.replace("\\", "/")).strip()
+    name = "".join(c if (c.isalnum() or c in " ._-()+[]") else "_" for c in name).lstrip(". ")[:150]
+    return name or "file"
+
+
+def unique_path(name):
+    base, ext = os.path.splitext(name)
+    fp, i = os.path.join(UPLOADS, name), 1
+    while os.path.exists(fp):
+        fp = os.path.join(UPLOADS, f"{base} ({i}){ext}")
+        i += 1
+    return fp
+
+
+def human(n):
+    for u in ("B", "KB", "MB", "GB"):
+        if n < 1024 or u == "GB":
+            return f"{n:.0f} {u}" if u == "B" else f"{n:.1f} {u}"
+        n /= 1024
+
+
+def list_files():
+    if not os.path.isdir(UPLOADS):
+        return []
+    out = []
+    for name in sorted(os.listdir(UPLOADS)):
+        fp = os.path.join(UPLOADS, name)
+        if os.path.isfile(fp) and not name.endswith(".part"):
+            st = os.stat(fp)
+            out.append({"name": name, "size": st.st_size, "path": fp, "t": int(st.st_mtime * 1000)})
+    return out
+
+
+def op_upload_done(fp, size, x, y):
+    """Đặt thẻ file lên bảng và tạo yêu cầu để Claude trong terminal biết có file mới."""
+    name = os.path.basename(fp)
+    op_items({"op": "put", "item": {"type": "note", "x": x, "y": y, "w": 260, "h": 90, "color": "sky",
+                                    "text": f"📎 **{name}**\n`{human(size)}`", "file": name}})
+    op_ask({"region": None, "question": f"📎 Đã tải lên file `{name}` ({human(size)}) → {fp}"})
+    return {"ok": True, "name": name, "size": size, "path": fp}
+
+
 def op_chat(body):
     msg = {"id": new_id("m"), "role": body.get("role", "claude"), "text": body.get("text", ""),
            "req": body.get("req"), "region": body.get("region"), "t": now_ms()}
@@ -230,8 +277,15 @@ class H(BaseHTTPRequestHandler):
         n = int(self.headers.get("Content-Length") or 0)
         return json.loads(self.rfile.read(n) or b"{}")
 
+    def upath(self):
+        # http.server giải mã dòng yêu cầu theo latin-1; khôi phục UTF-8 nếu client gửi tên chưa mã hoá %
+        try:
+            return self.path.encode("latin-1").decode("utf-8")
+        except UnicodeError:
+            return self.path
+
     def do_GET(self):
-        u = urlparse(self.path)
+        u = urlparse(self.upath())
         q = parse_qs(u.query)
         p = u.path
         if p == "/api/state":
@@ -260,6 +314,14 @@ class H(BaseHTTPRequestHandler):
             with lock:
                 it = state["items"].get(q.get("id", [""])[0])
             return self.send_json(it or {"error": "not found"}, 200 if it else 404)
+        if p == "/api/files":
+            return self.send_json(list_files())
+        if p.startswith("/api/file/"):
+            name = unquote(p[len("/api/file/"):])
+            fp = os.path.join(UPLOADS, safe_name(name))
+            if safe_name(name) == name and os.path.isfile(fp):
+                return self.file(fp, attach=True)
+            return self.send_json({"error": "not found"}, 404)
         if p == "/" or p == "":
             p = "/index.html"
         fp = os.path.normpath(os.path.join(STATIC, p.lstrip("/")))
@@ -267,18 +329,52 @@ class H(BaseHTTPRequestHandler):
             return self.file(fp)
         self.send_json({"error": "not found"}, 404)
 
-    def file(self, fp):
-        with open(fp, "rb") as f:
-            data = f.read()
+    def file(self, fp, attach=False):
         ctype = mimetypes.guess_type(fp)[0] or "application/octet-stream"
-        if ctype.startswith("text/") or ctype.endswith("javascript"):
+        if attach:  # file người dùng: luôn tải về, không để trình duyệt thực thi
+            ctype = "application/octet-stream"
+        elif ctype.startswith("text/") or ctype.endswith("javascript"):
             ctype += "; charset=utf-8"
         self.send_response(200)
         self.send_header("Content-Type", ctype)
-        self.send_header("Content-Length", str(len(data)))
+        self.send_header("Content-Length", str(os.path.getsize(fp)))
         self.send_header("Cache-Control", "no-cache")
+        if attach:
+            self.send_header("Content-Disposition", "attachment; filename*=UTF-8''" + quote(os.path.basename(fp)))
+            self.send_header("X-Content-Type-Options", "nosniff")
         self.end_headers()
-        self.wfile.write(data)
+        with open(fp, "rb") as f:
+            while chunk := f.read(1 << 20):
+                self.wfile.write(chunk)
+
+    def upload(self, q):
+        """POST /api/upload?name=&x=&y= với thân là nội dung file thô; ghi theo từng khối."""
+        n = int(self.headers.get("Content-Length") or 0)
+        if n <= 0 or n > MAX_UPLOAD:
+            return self.send_json({"ok": False, "error": f"kích thước không hợp lệ (tối đa {human(MAX_UPLOAD)})"}, 413)
+        os.makedirs(UPLOADS, exist_ok=True)
+        with lock:
+            fp = unique_path(safe_name(q.get("name", ["file"])[0]))
+            open(fp + ".part", "wb").close()  # giữ chỗ để upload song song không trùng tên
+        left = n
+        try:
+            with open(fp + ".part", "wb") as f:
+                while left:
+                    chunk = self.rfile.read(min(left, 1 << 20))
+                    if not chunk:
+                        raise ConnectionError("mất kết nối giữa chừng")
+                    f.write(chunk)
+                    left -= len(chunk)
+            os.replace(fp + ".part", fp)
+        except (OSError, ConnectionError) as e:
+            try:
+                os.remove(fp + ".part")
+            except OSError:
+                pass
+            return self.send_json({"ok": False, "error": str(e)}, 500)
+        num = lambda k: round(float(q.get(k, ["0"])[0] or 0))
+        with lock:
+            return self.send_json(op_upload_done(fp, n, num("x"), num("y")))
 
     def sse(self):
         self.send_response(200)
@@ -304,7 +400,10 @@ class H(BaseHTTPRequestHandler):
             clients.remove(q)
 
     def do_POST(self):
-        p = urlparse(self.path).path
+        u = urlparse(self.upath())
+        p = u.path
+        if p == "/api/upload":
+            return self.upload(parse_qs(u.query))
         try:
             b = self.body()
         except json.JSONDecodeError:
@@ -336,6 +435,7 @@ def main():
     ap.add_argument("--port", type=int, default=8765)
     a = ap.parse_args()
     load()
+    os.makedirs(UPLOADS, exist_ok=True)
     srv = ThreadingHTTPServer((a.host, a.port), H)
     srv.daemon_threads = True
     print(f"whiteboard on http://{a.host}:{a.port}", flush=True)

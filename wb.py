@@ -63,7 +63,7 @@ def cmd_start(a):
         print(f"đang chạy: {url('/')}")
         return
     log = open(LOG, "a")
-    p = subprocess.Popen([sys.executable, os.path.join(ROOT, "server.py"), "--port", str(port())],
+    p = subprocess.Popen([sys.executable, os.path.join(ROOT, "server.py"), "--port", str(port()), "--host", a.host],
                          stdout=log, stderr=log, start_new_session=True)
     open(PID, "w").write(str(p.pid))
     for _ in range(30):
@@ -268,6 +268,14 @@ def cmd_reply(a):
     print("đã trả lời" + (" và đóng yêu cầu" if a.done else ""))
 
 
+def cmd_files(a):
+    files = api("/api/files")
+    if not files:
+        print("chưa có file nào được tải lên")
+    for f in files:
+        print(f"{f['size']:>12,}  {time.strftime('%m-%d %H:%M', time.localtime(f['t'] / 1000))}  {f['path']}")
+
+
 def cmd_done(a):
     rid = current(a.rid)
     api(f"/api/request/{rid}/status", {"status": "done"})
@@ -278,7 +286,7 @@ def main():
     ap = argparse.ArgumentParser(prog="wb")
     sp = ap.add_subparsers(dest="cmd", required=True)
 
-    p = sp.add_parser("start"); p.add_argument("--port", type=int); p.set_defaults(f=cmd_start)
+    p = sp.add_parser("start"); p.add_argument("--port", type=int); p.add_argument("--host", default="127.0.0.1"); p.set_defaults(f=cmd_start)
     sp.add_parser("stop").set_defaults(f=cmd_stop)
     sp.add_parser("status").set_defaults(f=cmd_status)
     p = sp.add_parser("wait"); p.add_argument("--timeout", type=float, default=3300); p.set_defaults(f=cmd_wait)
@@ -288,6 +296,7 @@ def main():
         p.add_argument(k, type=float)
     p.set_defaults(f=cmd_look)
     p = sp.add_parser("item"); p.add_argument("id"); p.set_defaults(f=cmd_item)
+    sp.add_parser("files", help="liệt kê file người dùng đã tải lên").set_defaults(f=cmd_files)
 
     def writer(name, f, **extra):
         p = sp.add_parser(name)

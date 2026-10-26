@@ -31,6 +31,9 @@ wb.py  ◄── Claude trong terminal (./wb …)
 | POST | `/api/chat` | tin nhắn chat |
 | POST | `/api/request/<id>/status` | đổi trạng thái yêu cầu |
 | POST | `/api/clear` | xoá bảng |
+| GET | `/api/files` | danh sách file đã tải lên `{name,size,path,t}` |
+| GET | `/api/file/<tên>` | tải file về (luôn `attachment`) |
+| POST | `/api/upload?name=&x=&y=` | thân là nội dung file thô; lưu vào `$WB_UPLOADS`, đặt thẻ 📎 tại `(x,y)` và tạo yêu cầu báo Claude |
 
 Server chỉ nghe trên `127.0.0.1`. Không có xác thực: đừng mở ra mạng ngoài.
 

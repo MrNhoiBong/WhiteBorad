@@ -193,16 +193,17 @@ function renderEl(d, zi, force) {
   if (d.type === 'note') {
     e.style.width = (d.w || 220) + 'px';
     e.style.background = `var(--n-${NOTE.includes(d.color) ? d.color : 'yellow'})`;
-    e.querySelector('.who').innerHTML = claude ? '<span class="tag">✦ Claude</span>' : 'Ghi chú';
-    e.querySelector('.body').innerHTML = rich(d.text);
+    e.querySelector('.who').innerHTML = 'Ghi chú'; // không ghi tên Claude lên hình
+    e.querySelector('.body').innerHTML = rich(d.text) + (d.file ? `<a class="dl" href="/api/file/${encodeURIComponent(d.file)}" download>⬇ Tải về</a>` : '');
+    const dl = e.querySelector('.dl'); if (dl) dl.addEventListener('pointerdown', (ev) => ev.stopPropagation());
   } else if (d.type === 'text') {
     e.style.color = col(d.color); e.style.fontSize = (d.size || 24) + 'px';
     e.querySelectorAll(':scope>.tag').forEach((t) => t.remove());
-    e.querySelector('.rich').innerHTML = rich(d.text) + (claude ? '<span class="tag">✦ Claude</span>' : '');
+    e.querySelector('.rich').innerHTML = rich(d.text);
     const t = e.querySelector('.tag'); if (t) e.appendChild(t);
   } else {
     e.style.width = d.w + 'px'; e.style.height = (d.h + HEAD) + 'px';
-    e.querySelector('.who').innerHTML = claude ? '<span class="tag">✦ Claude</span>' : '';
+    e.querySelector('.who').innerHTML = '';
     e.querySelector('.ttl').textContent = d.title || 'Hình';
     const body = e.querySelector('.mbody'); body.innerHTML = '';
     const img = new Image(); img.alt = d.title || 'Hình'; img.draggable = false; img.src = svgUrl(d.svg); body.appendChild(img);
@@ -222,7 +223,45 @@ function syncSize(id) {
 function svgUrl(svg) {
   let s = String(svg || '');
   if (!/xmlns=/.test(s)) s = s.replace(/<svg\b/, '<svg xmlns="http://www.w3.org/2000/svg"');
+  s = svgMath(s);
   return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(s);
+}
+// <text> chứa $…$ trong SVG: render bằng MathJax thành <svg> lồng (ảnh <img> không chạy MathJax được).
+// Phần chữ thường quanh công thức được bọc \text{}. Cỡ chữ lấy từ thuộc tính font-size (mặc định 14).
+const svgMathCache = new Map();
+function svgMath(s) {
+  if (!mathReady || !/\$[^$]+\$/.test(s)) return s;
+  if (svgMathCache.has(s)) return svgMathCache.get(s);
+  let out = s;
+  try {
+    const doc = new DOMParser().parseFromString(s, 'image/svg+xml');
+    if (!doc.querySelector('parsererror')) {
+      doc.querySelectorAll('text').forEach((t) => {
+        const raw = t.textContent;
+        if (!/\$[^$]+\$/.test(raw)) return;
+        const src = raw.split(/(\$[^$]+\$)/).filter(Boolean)
+          .map((p) => (p.startsWith('$') ? p.slice(1, -1) : `\\text{${p.replace(/([{}\\])/g, '\\$1')}}`)).join('');
+        const node = MathJax.tex2svg(src, { display: false });
+        const m = node.querySelector('svg'); if (!m || node.querySelector('[data-mjx-error]')) return;
+        const fs = parseFloat(t.getAttribute('font-size')) || 14, ex = fs * 0.5;
+        const w = parseFloat(m.getAttribute('width')) * ex, h = parseFloat(m.getAttribute('height')) * ex;
+        const depth = -parseFloat((/vertical-align:\s*([-\d.]+)ex/.exec(m.getAttribute('style') || '') || [0, 0])[1]) * ex;
+        const x = parseFloat(t.getAttribute('x')) || 0, y = parseFloat(t.getAttribute('y')) || 0;
+        const anchor = t.getAttribute('text-anchor') || 'start';
+        const nm = doc.importNode(m, true);
+        nm.removeAttribute('style');
+        nm.setAttribute('x', (anchor === 'middle' ? x - w / 2 : anchor === 'end' ? x - w : x).toFixed(1));
+        nm.setAttribute('y', (y - h + depth).toFixed(1));
+        nm.setAttribute('width', w.toFixed(1)); nm.setAttribute('height', h.toFixed(1));
+        nm.setAttribute('color', t.getAttribute('fill') || '#222');
+        t.replaceWith(nm);
+      });
+      out = new XMLSerializer().serializeToString(doc);
+    }
+  } catch (e) { out = s; }
+  if (svgMathCache.size > 200) svgMathCache.clear();
+  svgMathCache.set(s, out);
+  return out;
 }
 
 /* ---------- editing ---------- */
@@ -482,6 +521,36 @@ $('#clear').addEventListener('click', () => { if (confirm('Xoá toàn bộ nội
 $('#zin').addEventListener('click', () => { const r = board.getBoundingClientRect(); zoomAt(r.left + r.width / 2, r.top + r.height / 2, 1.2); });
 $('#zout').addEventListener('click', () => { const r = board.getBoundingClientRect(); zoomAt(r.left + r.width / 2, r.top + r.height / 2, 1 / 1.2); });
 $('#zfit').addEventListener('click', fit);
+
+/* ---------- tải file lên ---------- */
+// gửi nội dung thô tới server; server lưu file, đặt thẻ lên bảng và báo cho Claude
+async function uploadFiles(files, at) {
+  const r = board.getBoundingClientRect();
+  const p = at || toWorld(r.left + r.width / 2, r.top + r.height / 2);
+  let i = 0;
+  for (const f of files) {
+    setStatus('busy', `Đang tải lên ${f.name}…`);
+    const q = new URLSearchParams({ name: f.name, x: Math.round(p.x), y: Math.round(p.y + i++ * 110) });
+    try {
+      const res = await fetch('/api/upload?' + q, { method: 'POST', headers: { 'Content-Type': 'application/octet-stream' }, body: f }).then((x) => x.json());
+      if (!res.ok) alert(`Không tải lên được ${f.name}: ${res.error}`);
+    } catch (e) { alert(`Không tải lên được ${f.name}: ${e.message}`); }
+  }
+  setStatus('live', 'Đã kết nối'); updateBusy();
+}
+const fileInput = $('#fileInput'), dropzone = $('#dropzone');
+$('#upload').addEventListener('click', () => fileInput.click());
+fileInput.addEventListener('change', () => { if (fileInput.files.length) uploadFiles([...fileInput.files]); fileInput.value = ''; });
+const hasFiles = (ev) => [...(ev.dataTransfer?.types || [])].includes('Files');
+let dragDepth = 0;
+board.addEventListener('dragenter', (ev) => { if (!hasFiles(ev)) return; dragDepth++; dropzone.hidden = false; });
+board.addEventListener('dragleave', () => { if (--dragDepth <= 0) { dragDepth = 0; dropzone.hidden = true; } });
+board.addEventListener('dragover', (ev) => { if (hasFiles(ev)) ev.preventDefault(); });
+board.addEventListener('drop', (ev) => {
+  if (!hasFiles(ev)) return;
+  ev.preventDefault(); dragDepth = 0; dropzone.hidden = true;
+  uploadFiles([...ev.dataTransfer.files], toWorld(ev.clientX, ev.clientY));
+});
 
 /* ---------- boot ---------- */
 setTool('pen');

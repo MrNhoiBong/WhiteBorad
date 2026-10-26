@@ -31,6 +31,14 @@ Sau đó nói với Claude Code, ví dụ "mở bảng trắng để mình vẽ 
 ```
 
 Đặt `WB_DATA=/đường/dẫn` để mỗi dự án có bảng riêng (mặc định là `data/` cạnh mã nguồn).
+Đặt `WB_UPLOADS=/đường/dẫn` để chọn nơi lưu file tải lên (mặc định `$WB_DATA/uploads`).
+
+Truy cập từ máy khác trong mạng LAN:
+
+```bash
+./wb start --host 0.0.0.0   # mở http://<IP LAN>:8765 trên máy khác
+./wb files                  # liệt kê file đã tải lên
+```
 
 ## Trên bảng
 
@@ -45,6 +53,10 @@ Sau đó nói với Claude Code, ví dụ "mở bảng trắng để mình vẽ 
 
 Khung chat bên phải dùng để nhắn mà không khoanh vùng.
 
+Nút **tải lên** (hoặc kéo thả file vào bảng) gửi file cho Claude: file được lưu trên máy chạy server, bảng hiện thẻ 📎 có nút tải về, và Claude nhận được đường dẫn file.
+
+Trong hình SVG, chữ trong `<text>` có thể chứa `$…$`; bảng sẽ render công thức bằng MathJax.
+
 ## Tài liệu
 
 - [`SKILL.md`](SKILL.md): quy trình Claude dùng để phục vụ bảng.
@@ -53,4 +65,6 @@ Khung chat bên phải dùng để nhắn mà không khoanh vùng.
 
 ## Bảo mật
 
-Server chỉ nghe trên `127.0.0.1` và không có xác thực. Đừng mở cổng ra mạng ngoài.
+Mặc định server chỉ nghe trên `127.0.0.1` và không có xác thực. `--host 0.0.0.0` chỉ nên dùng trong mạng LAN tin cậy: mọi người trong mạng đều xem, sửa bảng và tải file lên được. Đừng mở cổng ra Internet.
+
+File tải lên: tên được làm sạch (không thể ghi ra ngoài thư mục upload), tối đa 512 MB, và luôn được trả về dạng tải xuống (`attachment`, `nosniff`) để trình duyệt không thực thi.

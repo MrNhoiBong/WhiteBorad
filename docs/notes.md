@@ -22,6 +22,6 @@ Với đồ thị, nên viết một script Python sinh SVG: chi phí là độ 
 
 ## Giới hạn hiện tại
 
-- SVG hiển thị qua `<img>`, nên LaTeX bên trong SVG không được render. Cách thay thế: đặt các mục `tex` lên trên hình.
+- LaTeX trong SVG chỉ hỗ trợ trong `<text>` (`$…$`), và chỉ đọc `font-size`/`fill`/`text-anchor` dạng thuộc tính, không đọc CSS class.
 - Chưa có item ảnh PNG/raster và chưa có khung HTML tương tác.
-- Không có xác thực; chỉ dùng trên localhost.
+- Không có xác thực; chỉ dùng trên localhost hoặc LAN tin cậy (`--host 0.0.0.0`).

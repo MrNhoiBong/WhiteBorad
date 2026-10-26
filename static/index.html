@@ -35,6 +35,7 @@ window.MathJax = {
     </div>
 
     <div class="empty" id="empty"><b>Giấy nháp đang trống</b><p>Vẽ ý tưởng, viết công thức bằng LaTeX (<code>$x^2$</code>, <code>$$\sum_i a_i$$</code>), rồi dùng <b class="c">Khoanh vùng</b> để hỏi Claude về đúng phần đó.</p></div>
+    <div class="dropzone" id="dropzone" hidden><b>Thả file để tải lên</b></div>
     <div class="hint" id="hint" hidden>Kéo để khoanh vùng gửi cho Claude</div>
 
     <div class="top">
@@ -58,6 +59,8 @@ window.MathJax = {
       <div class="sep"></div>
       <button class="btn" data-tool="region" title="Khoanh vùng hỏi Claude (C)" aria-label="Khoanh vùng hỏi Claude"><svg viewBox="0 0 24 24"><path d="M4 8V5a1 1 0 011-1h3M16 4h3a1 1 0 011 1v3M20 16v3a1 1 0 01-1 1h-3M8 20H5a1 1 0 01-1-1v-3"/><path d="M12 8.5l1 2.5 2.5 1-2.5 1-1 2.5-1-2.5-2.5-1 2.5-1z"/></svg></button>
       <div class="sep"></div>
+      <button class="btn" id="upload" title="Tải file lên (hoặc kéo thả file vào bảng)" aria-label="Tải file lên"><svg viewBox="0 0 24 24"><path d="M12 16V4M7 9l5-5 5 5"/><path d="M4 15v4a1 1 0 001 1h14a1 1 0 001-1v-4"/></svg></button>
+      <input type="file" id="fileInput" multiple hidden>
       <button class="btn" id="undo" title="Hoàn tác (Ctrl+Z)" aria-label="Hoàn tác"><svg viewBox="0 0 24 24"><path d="M9 14L4 9l5-5"/><path d="M4 9h10a6 6 0 010 12h-3"/></svg></button>
     </nav>
 
