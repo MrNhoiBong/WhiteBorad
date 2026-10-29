@@ -1,5 +1,10 @@
 # Nhật ký thay đổi
 
+## 2026-10-29
+
+### Thay đổi hành vi
+- **Lăn chuột để zoom:** mỗi nấc lăn phóng to/thu nhỏ 10 điểm phần trăm quanh con trỏ (trước đây lăn chuột là kéo bảng, Ctrl+lăn mới zoom). Mức zoom tối thiểu giảm từ 15% xuống 10%.
+
 ## 2026-10-26
 
 So với bản đầu tiên (`a3490a6`):

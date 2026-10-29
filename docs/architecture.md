@@ -43,4 +43,5 @@ Giao diện viết bằng vanilla JS và MathJax 3 (tex-svg, nạp từ jsdelivr
 
 - **Công cụ:** chọn (V), kéo bảng (H), bút (P), ghi chú (N), chữ (T), công thức (M), khung (R), mũi tên (A), tẩy (E), khoanh vùng hỏi Claude (C).
 - **Phím tắt khác:** Ctrl+Z để hoàn tác, Delete để xoá, Esc để huỷ.
+- **Lăn chuột:** mỗi nấc (hoặc ~50px cuộn trackpad) phóng to/thu nhỏ 10 điểm phần trăm quanh con trỏ, giới hạn 10%–400%. Kéo bảng bằng công cụ H.
 - Có chế độ sáng và tối.

@@ -112,7 +112,7 @@ const toWorld = (cx, cy) => { const r = board.getBoundingClientRect(); return { 
 const toScreen = (x, y) => { const r = board.getBoundingClientRect(); return { x: r.left + view.x + x * view.k, y: r.top + view.y + y * view.k }; };
 function zoomAt(cx, cy, f) {
   const r = board.getBoundingClientRect(), px = cx - r.left, py = cy - r.top;
-  const k = Math.min(4, Math.max(0.15, view.k * f)), ratio = k / view.k;
+  const k = Math.min(4, Math.max(0.1, view.k * f)), ratio = k / view.k;
   view.x = px - (px - view.x) * ratio; view.y = py - (py - view.y) * ratio; view.k = k; applyView();
 }
 function bbox(d) {
@@ -410,10 +410,15 @@ function flashRegion(r) {
   gRegions.innerHTML = regionRect(r, 'regionbox');
   clearTimeout(flashRegion.t); flashRegion.t = setTimeout(() => { gRegions.innerHTML = ''; }, 2500);
 }
+let wheelAcc = 0;
 board.addEventListener('wheel', (ev) => {
   ev.preventDefault();
-  if (ev.ctrlKey || ev.metaKey) zoomAt(ev.clientX, ev.clientY, Math.exp(-ev.deltaY * 0.01));
-  else { view.x -= ev.deltaX; view.y -= ev.deltaY; applyView(); }
+  // each mouse notch (or ~50px of trackpad scroll) zooms by 10 percentage points
+  wheelAcc += ev.deltaY * (ev.deltaMode === 1 ? 33 : ev.deltaMode === 2 ? 800 : 1);
+  if (Math.abs(wheelAcc) < 50) return;
+  const dir = wheelAcc < 0 ? 1 : -1; wheelAcc = 0;
+  const k = Math.min(4, Math.max(0.1, (Math.round(view.k * 10) + dir) / 10));
+  zoomAt(ev.clientX, ev.clientY, k / view.k);
 }, { passive: false });
 addEventListener('keydown', (ev) => {
   const typing = /^(TEXTAREA|INPUT)$/.test(document.activeElement?.tagName);

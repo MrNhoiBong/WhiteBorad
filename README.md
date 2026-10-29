@@ -50,6 +50,7 @@ Truy cập từ máy khác trong mạng LAN:
 | R / A | khung / mũi tên |
 | **C** | **khoanh vùng và hỏi Claude** |
 | Ctrl+Z | hoàn tác |
+| Lăn chuột | phóng to / thu nhỏ 10% mỗi nấc (10%–400%) |
 
 Khung chat bên phải dùng để nhắn mà không khoanh vùng.
 
