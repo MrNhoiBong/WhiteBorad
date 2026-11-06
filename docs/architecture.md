@@ -11,7 +11,7 @@ wb.py  ◄── Claude trong terminal (./wb …)
 ```
 
 - **Trạng thái:** `{"items": {...}, "chat": [...]}`, lưu trong `board.json` sau mỗi thay đổi.
-- **Item:** `note`, `text`, `stroke`, `rect`, `arrow`, `image` (SVG). Mỗi item có `x, y, w, h, color, author`.
+- **Item:** `note`, `text`, `stroke`, `rect`, `arrow`, `image` (SVG), `codefile` (file văn bản tải lên: `file`, `size`, `open`; nội dung không nằm trong `board.json`). Mỗi item có `x, y, w, h, color, author`.
 - **Yêu cầu:** khi người dùng khoanh vùng và hỏi, server chỉ lưu **các item nằm trong vùng**. Ảnh PNG của vùng (chụp bằng canvas ở trình duyệt) chỉ được lưu khi vùng có nét tay, khung, mũi tên hoặc hình. Nhờ đó Claude chỉ đọc đúng phần được hỏi.
 - **Trạng thái yêu cầu:** `pending` → `seen` (khi `wb wait` nhận) → `done`.
 
@@ -33,9 +33,9 @@ wb.py  ◄── Claude trong terminal (./wb …)
 | POST | `/api/clear` | xoá bảng |
 | GET | `/api/files` | danh sách file đã tải lên `{name,size,path,t}` |
 | GET | `/api/file/<tên>` | tải file về (luôn `attachment`) |
-| POST | `/api/upload?name=&x=&y=` | thân là nội dung file thô; lưu vào `$WB_UPLOADS`, đặt thẻ 📎 tại `(x,y)` và tạo yêu cầu báo Claude |
+| POST | `/api/upload?name=&x=&y=` | thân là nội dung file thô; lưu vào `$WB_UPLOADS`, đặt thẻ tại `(x,y)` (`codefile` với file văn bản đến 1 MB, 📎 với file khác) và tạo yêu cầu báo Claude |
 
-Server chỉ nghe trên `127.0.0.1`. Không có xác thực: đừng mở ra mạng ngoài.
+Mặc định server chỉ nghe trên `127.0.0.1`; `wb start --host 0.0.0.0` mở cho LAN. Không có xác thực: đừng mở ra mạng ngoài.
 
 ## Giao diện
 

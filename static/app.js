@@ -151,7 +151,7 @@ function svgInner(d) {
   if (d.type === 'arrow') return `<path d="${arrowPath(d)}" fill="none" stroke="${c}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/><path class="hit" d="M0 0L${d.dx} ${d.dy}"/>`;
   return '';
 }
-const isEl = (t) => t === 'note' || t === 'text' || t === 'image';
+const isEl = (t) => t === 'note' || t === 'text' || t === 'image' || t === 'codefile';
 const elOf = (id) => els.querySelector(`.el[data-id="${CSS.escape(id)}"]`);
 function render(force) {
   const sorted = [...items.values()].sort((a, b) => (a.z || 0) - (b.z || 0));
@@ -179,15 +179,21 @@ function renderEl(d, zi, force) {
     e = document.createElement('div'); e.dataset.id = d.id; e.className = 'el ' + d.type;
     if (d.type === 'note') e.innerHTML = '<div class="grip"><span class="who"></span><span>⋮⋮</span></div><div class="body rich"></div>';
     else if (d.type === 'text') e.innerHTML = '<div class="rich"></div>';
+    else if (d.type === 'codefile') {
+      e.innerHTML = '<div class="fhead"><button class="ftog" type="button"></button><span class="fname"></span><span class="fsize"></span><a class="fdl" download title="Tải về">⬇</a></div><pre class="fbody" hidden></pre>';
+      // ở công cụ chọn: bấm nút và bôi đen code, không kéo thẻ; công cụ tẩy vẫn xoá được cả thẻ
+      for (const s of ['.ftog', '.fdl', '.fbody']) e.querySelector(s).addEventListener('pointerdown', (ev) => { if (tool === 'select') ev.stopPropagation(); });
+      e.querySelector('.ftog').addEventListener('click', (ev) => { ev.currentTarget.blur(); toggleFile(e.dataset.id); });
+    }
     else { e.classList.add('media'); e.innerHTML = '<div class="mhead"><span class="who"></span><span class="ttl"></span></div><div class="mbody"></div><div class="rs"></div>'; }
-    e.addEventListener('dblclick', (ev) => { ev.stopPropagation(); if (d.type !== 'image') startEdit(e.dataset.id); });
+    e.addEventListener('dblclick', (ev) => { ev.stopPropagation(); if (d.type !== 'image' && d.type !== 'codefile') startEdit(e.dataset.id); });
     els.appendChild(e);
   }
   e.style.left = d.x + 'px'; e.style.top = d.y + 'px'; e.style.zIndex = zi;
   e.classList.toggle('sel', selected === d.id);
   e.classList.toggle('by-claude', claude);
   if (editing === d.id) return;
-  const key = JSON.stringify([d.text, d.svg, d.color, d.size, d.w, d.h, d.title, mathReady]);
+  const key = JSON.stringify([d.text, d.svg, d.color, d.size, d.w, d.h, d.title, d.open, mathReady]);
   if (e._key === key && !force) return;
   e._key = key;
   if (d.type === 'note') {
@@ -201,6 +207,8 @@ function renderEl(d, zi, force) {
     e.querySelectorAll(':scope>.tag').forEach((t) => t.remove());
     e.querySelector('.rich').innerHTML = rich(d.text);
     const t = e.querySelector('.tag'); if (t) e.appendChild(t);
+  } else if (d.type === 'codefile') {
+    renderFile(e, d);
   } else {
     e.style.width = d.w + 'px'; e.style.height = (d.h + HEAD) + 'px';
     e.querySelector('.who').innerHTML = '';
@@ -209,6 +217,31 @@ function renderEl(d, zi, force) {
     const img = new Image(); img.alt = d.title || 'Hình'; img.draggable = false; img.src = svgUrl(d.svg); body.appendChild(img);
   }
   if (d.type !== 'image') requestAnimationFrame(() => syncSize(d.id));
+}
+// thẻ file văn bản: mặc định chỉ hiện tên, nút +/- mở nội dung (tải một lần từ server)
+function renderFile(e, d) {
+  e.style.width = (d.open ? 680 : 320) + 'px';
+  const tog = e.querySelector('.ftog'), name = e.querySelector('.fname'), body = e.querySelector('.fbody');
+  tog.textContent = d.open ? '−' : '+';
+  tog.title = d.open ? 'Che nội dung' : 'Hiện nội dung';
+  name.textContent = d.file; name.title = d.file;
+  e.querySelector('.fsize').textContent = d.size || '';
+  e.querySelector('.fdl').href = `/api/file/${encodeURIComponent(d.file)}`;
+  body.hidden = !d.open;
+  if (!d.open || e._loaded) return;
+  e._loaded = true;
+  body.textContent = 'Đang tải…';
+  fetch(`/api/file/${encodeURIComponent(d.file)}`)
+    .then((r) => { if (!r.ok) throw new Error(r.status); return r.text(); })
+    .then((t) => { body.textContent = t; })
+    .catch((err) => { e._loaded = false; body.textContent = `Không tải được nội dung (${err.message}).`; })
+    .finally(() => syncSize(d.id));
+}
+function toggleFile(id) {
+  const d = items.get(id); if (!d) return;
+  d.open = !d.open;
+  render();
+  post('/api/items', { op: 'patch', id, set: { open: d.open } });
 }
 // gửi kích thước thật về server để Claude đặt mục mới không đè lên
 const sizeTimers = new Map();
@@ -412,6 +445,7 @@ function flashRegion(r) {
 }
 let wheelAcc = 0;
 board.addEventListener('wheel', (ev) => {
+  if (ev.target.closest('.fbody')) return; // cuộn nội dung file, không zoom bảng
   ev.preventDefault();
   // each mouse notch (or ~50px of trackpad scroll) zooms by 10 percentage points
   wheelAcc += ev.deltaY * (ev.deltaMode === 1 ? 33 : ev.deltaMode === 2 ? 800 : 1);
@@ -475,7 +509,7 @@ async function snapshot(r) {
   const list = [...items.values()].filter((d) => inside(bbox(d))).sort((a, b) => (a.z || 0) - (b.z || 0));
   for (const d of list) {
     g.save(); g.lineCap = 'round'; g.lineJoin = 'round';
-    if (d.type === 'note' || d.type === 'text') {
+    if (d.type === 'note' || d.type === 'text' || d.type === 'codefile') {
       g.fillStyle = d.type === 'note' ? '#fff6c8' : 'rgba(0,0,0,0.04)'; g.fillRect(d.x, d.y, d.w || 200, d.h || 40);
       g.fillStyle = '#555'; g.font = '13px sans-serif'; g.fillText(`[${d.id}]`, d.x + 6, d.y + 16);
     } else if (d.type === 'image') {

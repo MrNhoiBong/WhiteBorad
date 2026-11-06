@@ -22,7 +22,7 @@ Sau đó nói với Claude Code, ví dụ "mở bảng trắng để mình vẽ 
 ## Dùng thủ công
 
 ```bash
-./wb start              # http://127.0.0.1:8765
+./wb start              # tạo ./.whiteboard, in URL (cổng trống từ 8765)
 ./wb wait               # chờ một yêu cầu khoanh vùng (Claude chạy lệnh này ở nền)
 ./wb reply "Đáp: $x^2$" --done
 ./wb tex '$$\sum_{i=1}^n i = \tfrac{n(n+1)}{2}$$'
@@ -30,13 +30,13 @@ Sau đó nói với Claude Code, ví dụ "mở bảng trắng để mình vẽ 
 ./wb stop
 ```
 
-Đặt `WB_DATA=/đường/dẫn` để mỗi dự án có bảng riêng (mặc định là `data/` cạnh mã nguồn).
-Đặt `WB_UPLOADS=/đường/dẫn` để chọn nơi lưu file tải lên (mặc định `$WB_DATA/uploads`).
+**Mỗi thư mục một bảng riêng:** chạy `wb` từ thư mục nào thì dùng bảng của thư mục đó, lưu trong `./.whiteboard/`: bảng, yêu cầu, file tải lên, cổng (tự chọn cổng trống từ 8765) và cả virtualenv riêng. Thư mục này tự có `.gitignore`.
+Đặt `WB_DATA=/đường/dẫn` để lưu bảng chỗ khác, `WB_UPLOADS=/đường/dẫn` để chọn nơi lưu file tải lên (mặc định `$WB_DATA/uploads`).
 
 Truy cập từ máy khác trong mạng LAN:
 
 ```bash
-./wb start --host 0.0.0.0   # mở http://<IP LAN>:8765 trên máy khác
+./wb start --host 0.0.0.0   # mở http://<IP LAN>:<cổng> trên máy khác
 ./wb files                  # liệt kê file đã tải lên
 ```
 

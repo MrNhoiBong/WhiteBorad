@@ -1,5 +1,23 @@
 # Nhật ký thay đổi
 
+## 2026-11-06
+
+### Tài liệu
+- `SKILL.md`: thêm cách Claude đưa file lên bảng thành thẻ và đóng yêu cầu tự sinh.
+- `docs/architecture.md`: sửa mô tả cũ về địa chỉ nghe và loại thẻ của `/api/upload`.
+
+## 2026-11-05
+
+### Tính năng mới
+- **Thẻ file văn bản (`codefile`):** tải lên file code hoặc văn bản đến 1 MB (`.py`, C/C++, `.md`, `.txt`, hoặc bất kỳ file UTF-8 nào) sẽ tạo thẻ hình chữ nhật có tên file và nút `+`/`−` để hiện hoặc che nội dung. Nội dung nằm trên đĩa, chỉ tải khi mở thẻ. File nhị phân hoặc lớn hơn 1 MB vẫn dùng thẻ 📎.
+
+## 2026-10-31
+
+### Thay đổi hành vi
+- **Mỗi thư mục một bảng riêng hoàn toàn:** bỏ bảng chung `data/` và `.venv` trong thư mục skill. Mặc định `WB_DATA` là `./.whiteboard` của thư mục chạy lệnh; venv nằm ở `$WB_DATA/.venv`; `$WB_DATA/.gitignore` được tạo tự động.
+- **Tự chọn cổng:** chưa có `--port` thì lấy cổng trống đầu tiên từ 8765 và lưu lại, để nhiều bảng chạy song song.
+- `wb` chỉ coi server là đang chạy khi pid đã lưu của chính bảng đó còn sống, tránh gửi lệnh nhầm sang bảng của thư mục khác.
+
 ## 2026-10-29
 
 ### Thay đổi hành vi

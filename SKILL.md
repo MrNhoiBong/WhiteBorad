@@ -10,18 +10,19 @@ Mã nằm ngay trong thư mục skill này; dưới đây `WB` là đường d�
 
 ## Khởi động
 
+**Mỗi thư mục là một bảng riêng hoàn toàn.** Không có bảng chung trong thư mục skill: bảng, yêu cầu, file tải lên, cổng và venv đều nằm trong `./.whiteboard/` của thư mục chạy lệnh (thư mục làm việc của dự án).
+
 ```bash
-export WB_DATA="$PWD/.whiteboard"   # tuỳ chọn: bảng riêng cho dự án hiện tại (mặc định: WB/data)
-export WB_UPLOADS="$PWD/uploads"    # tuỳ chọn: nơi lưu file tải lên (mặc định: $WB_DATA/uploads)
-WB/wb start [--port 8765] [--host 0.0.0.0]   # tự tạo .venv (python3 -m venv --without-pip), không cần gói ngoài
+cd "<thư mục dự án>"                         # luôn chạy wb từ đúng thư mục này
+WB/wb start [--port P] [--host 0.0.0.0]      # tạo ./.whiteboard/ (+ .venv riêng, python3 -m venv --without-pip)
 ```
 
-- Mặc định chỉ nghe `127.0.0.1`. Người dùng muốn **truy cập từ máy khác trong LAN** thì thêm `--host 0.0.0.0` và đưa thêm URL dạng `http://<IP LAN>:8765` (lấy IP bằng `hostname -I`). Server không có xác thực: chỉ mở trong mạng tin cậy.
-
-- Đưa người dùng URL (`http://127.0.0.1:8765`), rồi **chạy `WB/wb wait --timeout 3300` ở chế độ nền** (run_in_background).
-- Nếu đặt `WB_DATA`/`WB_UPLOADS`, phải đặt cùng giá trị cho **mọi** lệnh `wb` sau đó (ghi ngay trong lệnh: `WB_DATA=... WB/wb ...`).
-- Nếu dùng `WB_DATA` bên trong một repo git, thêm `.whiteboard/` vào `.gitignore`.
-- Mọi script Python Claude chạy cho người dùng (vẽ SVG, tính toán) nên dùng venv: `WB/.venv/bin/python` hoặc venv của dự án.
+- Cổng: lần đầu tự chọn cổng trống từ 8765 trở lên rồi lưu vào `./.whiteboard/port`, nên nhiều thư mục chạy song song được. Lấy URL đúng từ dòng `đã chạy: …` mà lệnh in ra.
+- Mặc định chỉ nghe `127.0.0.1`. Người dùng muốn **truy cập từ máy khác trong LAN** thì thêm `--host 0.0.0.0` và đưa thêm URL dạng `http://<IP LAN>:<cổng>` (lấy IP bằng `hostname -I`). Server không có xác thực: chỉ mở trong mạng tin cậy.
+- Đưa người dùng URL, rồi **chạy `WB/wb wait --timeout 3300` ở chế độ nền** (run_in_background).
+- **Mọi lệnh `wb` phải chạy từ cùng thư mục** (hoặc cùng `WB_DATA`), nếu không sẽ trỏ sang bảng khác. `WB_DATA`/`WB_UPLOADS` vẫn dùng được để đặt chỗ khác, khi đó phải ghi cùng giá trị cho mọi lệnh.
+- `./.whiteboard/` tự có `.gitignore` (`*`) nên git của dự án không theo dõi nó.
+- Mọi script Python Claude chạy cho người dùng (vẽ SVG, tính toán) dùng venv của bảng `./.whiteboard/.venv/bin/python` hoặc venv của dự án.
 
 ## Vòng phục vụ
 
@@ -46,8 +47,20 @@ Khi người dùng muốn dừng: `WB/wb stop`.
 ## File tải lên
 
 - Người dùng (cả máy khác trong LAN) bấm nút **tải lên** trên thanh công cụ hoặc kéo thả file vào bảng. Server lưu vào `WB_UPLOADS` (mặc định `$WB_DATA/uploads`), đặt thẻ 📎 có link tải về lên bảng, và tạo yêu cầu `📎 Đã tải lên file … → <đường dẫn>` để `wait` báo cho Claude.
+- File code hoặc văn bản đến 1 MB hiện thành thẻ có tên file và nút `+`/`−` để mở hoặc che nội dung (mục `codefile`); file khác dùng thẻ 📎.
 - `wb files` liệt kê file đã tải lên kèm đường dẫn tuyệt đối. Tối đa 512 MB/file; tên được làm sạch, trùng tên thì thêm ` (1)`.
 - Khi khởi động lại server, nhớ đặt cùng `WB_UPLOADS`, nếu không file cũ sẽ không hiện trong `wb files`.
+
+**Claude đưa file lên bảng** (ví dụ để người dùng đọc code), chạy từ thư mục của bảng:
+
+```bash
+curl -s -X POST --data-binary @FILE "http://127.0.0.1:$(cat .whiteboard/port)/api/upload?name=TEN&x=X&y=Y"
+WB/wb show --pending    # lấy id của yêu cầu 📎 vừa tự sinh
+WB/wb done <id>         # đóng yêu cầu đó, nếu không wait sẽ báo lại chính file này
+```
+
+- Xem chỗ trống trước bằng `wb look X Y W H`. Tên có `/` thì đổi thành `__`.
+- Đăng lại cùng tên sẽ tạo thẻ ` (1)`, nên xoá thẻ cũ bằng `wb rm ID`.
 
 ## Lệnh vẽ
 

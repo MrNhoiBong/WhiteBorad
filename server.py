@@ -19,13 +19,16 @@ from urllib.parse import parse_qs, quote, unquote, urlparse
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 STATIC = os.path.join(ROOT, "static")
-# WB_DATA cho phép mỗi dự án có bảng riêng; mặc định là data/ cạnh mã nguồn
-DATA = os.path.abspath(os.environ.get("WB_DATA") or os.path.join(ROOT, "data"))
+# mỗi thư mục một bảng riêng: WB_DATA, mặc định ./.whiteboard của thư mục đang chạy
+DATA = os.path.abspath(os.environ.get("WB_DATA") or os.path.join(os.getcwd(), ".whiteboard"))
 REQS = os.path.join(DATA, "requests")
 BOARD = os.path.join(DATA, "board.json")
 # file người dùng tải lên từ trình duyệt (WB_UPLOADS để đặt chỗ khác)
 UPLOADS = os.path.abspath(os.environ.get("WB_UPLOADS") or os.path.join(DATA, "uploads"))
 MAX_UPLOAD = 512 * 1024 * 1024
+MAX_PREVIEW = 1024 * 1024  # file văn bản lớn hơn mức này chỉ có thẻ tải về
+TEXT_EXT = {".py", ".c", ".h", ".cc", ".cpp", ".cxx", ".hpp", ".hh", ".md", ".txt", ".java", ".js", ".ts", ".sh",
+            ".sql", ".json", ".yaml", ".yml", ".xml", ".html", ".css", ".csv", ".tex", ".ini", ".toml", ".log"}
 
 lock = threading.RLock()
 state = {"items": {}, "chat": []}
@@ -238,11 +241,32 @@ def list_files():
     return out
 
 
+def is_text_file(fp, size):
+    """File đủ nhỏ, không có byte NUL, và là UTF-8 hoặc có đuôi code/văn bản quen thuộc."""
+    if size > MAX_PREVIEW:
+        return False
+    with open(fp, "rb") as f:
+        data = f.read()
+    if b"\0" in data:
+        return False
+    if os.path.splitext(fp)[1].lower() in TEXT_EXT:
+        return True  # vd. file C lưu bằng Latin-1: trình duyệt vẫn hiện được phần lớn nội dung
+    try:
+        data.decode("utf-8")
+        return True
+    except UnicodeDecodeError:
+        return False
+
+
 def op_upload_done(fp, size, x, y):
     """Đặt thẻ file lên bảng và tạo yêu cầu để Claude trong terminal biết có file mới."""
     name = os.path.basename(fp)
-    op_items({"op": "put", "item": {"type": "note", "x": x, "y": y, "w": 260, "h": 90, "color": "sky",
-                                    "text": f"📎 **{name}**\n`{human(size)}`", "file": name}})
+    if is_text_file(fp, size):  # nội dung nằm trên đĩa, trình duyệt chỉ tải khi mở thẻ
+        item = {"type": "codefile", "x": x, "y": y, "w": 320, "h": 40, "file": name, "size": human(size)}
+    else:
+        item = {"type": "note", "x": x, "y": y, "w": 260, "h": 90, "color": "sky",
+                "text": f"📎 **{name}**\n`{human(size)}`", "file": name}
+    op_items({"op": "put", "item": item})
     op_ask({"region": None, "question": f"📎 Đã tải lên file `{name}` ({human(size)}) → {fp}"})
     return {"ok": True, "name": name, "size": size, "path": fp}
 

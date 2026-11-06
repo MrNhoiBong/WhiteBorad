@@ -136,6 +136,15 @@ code{font:12.5px var(--mono);background:color-mix(in srgb,var(--fg) 7%,transpare
 /* tải file lên */
 .note .dl{display:inline-block;margin-top:6px;font:600 12px/1 var(--ui);color:var(--accent);text-decoration:none;padding:6px 10px;border-radius:99px;background:var(--accent-soft)}
 .note .dl:hover{text-decoration:underline}
+.codefile{background:var(--panel);color:var(--fg);border:1px solid var(--line);border-radius:6px;box-shadow:var(--shadow);overflow:hidden}
+.fhead{display:flex;align-items:center;gap:8px;height:38px;padding:0 10px 0 8px;cursor:grab;font:500 13px/1 var(--ui)}
+.ftog{appearance:none;flex:none;width:24px;height:24px;display:grid;place-items:center;border:1px solid var(--line);border-radius:5px;background:var(--bg);color:var(--fg);font:600 16px/1 var(--mono);cursor:pointer}
+.ftog:hover{border-color:var(--accent);color:var(--accent)}
+.fname{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:var(--mono)}
+.fsize{flex:none;font-size:11px;color:var(--muted)}
+.fdl{flex:none;color:var(--accent);text-decoration:none;padding:4px}
+.fbody{margin:0;padding:10px 12px;max-height:480px;overflow:auto;border-top:1px solid var(--line);background:var(--bg);font:12.5px/1.5 var(--mono);white-space:pre;tab-size:4;cursor:text;user-select:text}
+.fbody[hidden]{display:none}
 .dropzone{position:absolute;inset:12px;border:2px dashed var(--accent);border-radius:12px;background:color-mix(in srgb,var(--accent) 8%,transparent);display:flex;align-items:center;justify-content:center;pointer-events:none;z-index:50}
 .dropzone[hidden]{display:none}
 .dropzone b{font:600 16px/1 var(--ui);color:var(--accent);background:var(--accent-soft);padding:12px 18px;border-radius:99px}

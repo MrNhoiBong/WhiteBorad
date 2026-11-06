@@ -20,8 +20,8 @@ import urllib.error
 import urllib.request
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
-# WB_DATA cho phép mỗi dự án có bảng riêng; mặc định là data/ cạnh mã nguồn
-DATA = os.path.abspath(os.environ.get("WB_DATA") or os.path.join(ROOT, "data"))
+# mỗi thư mục một bảng riêng: WB_DATA, mặc định ./.whiteboard của thư mục đang chạy
+DATA = os.path.abspath(os.environ.get("WB_DATA") or os.path.join(os.getcwd(), ".whiteboard"))
 PID = os.path.join(DATA, "server.pid")
 LOG = os.path.join(DATA, "server.log")
 CUR = os.path.join(DATA, "current_req")
@@ -33,6 +33,19 @@ def port():
         return int(open(CONF).read().strip())
     except (OSError, ValueError):
         return 8765
+
+
+def free_port(start=8765):
+    # mỗi bảng một cổng: lấy cổng trống đầu tiên từ 8765 trở lên
+    import socket
+    for p in range(start, start + 200):
+        with socket.socket() as s:
+            try:
+                s.bind(("0.0.0.0", p))
+                return p
+            except OSError:
+                continue
+    sys.exit("không tìm được cổng trống")
 
 
 def url(path=""):
@@ -47,6 +60,11 @@ def api(path, body=None, timeout=10):
 
 
 def alive():
+    # chỉ tính server của chính bảng này (pid đã lưu), tránh nói chuyện nhầm với bảng của thư mục khác
+    try:
+        os.kill(int(open(PID).read()), 0)
+    except (OSError, ValueError):
+        return False
     try:
         api("/api/requests?status=none", timeout=2)
         return True
@@ -62,6 +80,10 @@ def cmd_start(a):
     if alive():
         print(f"đang chạy: {url('/')}")
         return
+    if not a.port:
+        # cổng đã lưu bị bảng khác chiếm, hoặc chưa có: chọn cổng trống mới
+        p = port() if os.path.exists(CONF) else 8765
+        open(CONF, "w").write(str(free_port(p)))
     log = open(LOG, "a")
     p = subprocess.Popen([sys.executable, os.path.join(ROOT, "server.py"), "--port", str(port()), "--host", a.host],
                          stdout=log, stderr=log, start_new_session=True)
@@ -106,6 +128,8 @@ def short_item(it):
         return f"- [{it['id']}] mũi tên({who}) {pos} → (+{it.get('dx')},+{it.get('dy')})"
     if t == "image":
         return f"- [{it['id']}] hình SVG({who}) \"{it.get('title', '')}\" {pos} {it.get('w')}×{it.get('h')}"
+    if t == "codefile":
+        return f"- [{it['id']}] file văn bản({who}) {pos}: {it.get('file')} ({it.get('size')}), đường dẫn xem bằng `wb files`"
     return f"- [{it['id']}] {t}({who}) {pos}"
 
 

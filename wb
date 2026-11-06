@@ -1,8 +1,14 @@
 #!/usr/bin/env bash
-# Chạy wb.py trong môi trường ảo .venv (tự tạo nếu chưa có; không cần gói ngoài).
+# Bảng trắng của thư mục hiện tại: dữ liệu và venv riêng nằm trong $WB_DATA
+# (mặc định ./.whiteboard), tự tạo nếu chưa có; không cần gói ngoài.
 set -e
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-if [ ! -x "$DIR/.venv/bin/python" ]; then
-  python3 -m venv --without-pip "$DIR/.venv"
+export WB_DATA="$(realpath -m "${WB_DATA:-$PWD/.whiteboard}")"
+mkdir -p "$WB_DATA"
+# không để git của dự án theo dõi dữ liệu bảng
+[ -f "$WB_DATA/.gitignore" ] || echo '*' > "$WB_DATA/.gitignore"
+VENV="$WB_DATA/.venv"
+if [ ! -x "$VENV/bin/python" ]; then
+  python3 -m venv --without-pip "$VENV"
 fi
-exec "$DIR/.venv/bin/python" "$DIR/wb.py" "$@"
+exec "$VENV/bin/python" "$DIR/wb.py" "$@"
