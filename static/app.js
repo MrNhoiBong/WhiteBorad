@@ -591,6 +591,35 @@ board.addEventListener('drop', (ev) => {
   uploadFiles([...ev.dataTransfer.files], toWorld(ev.clientX, ev.clientY));
 });
 
+/* ---------- bảng khác ---------- */
+// dò các bảng wb đang chạy trên máy chủ; link dùng cùng hostname với trang này để mở được từ máy khác trong LAN
+const boardsPanel = $('#boards'), boardsBtn = $('#boardsBtn'), boardsList = $('#boardsList');
+async function loadBoards() {
+  boardsList.innerHTML = '<div class="foot">Đang dò cổng…</div>';
+  let list;
+  try { list = await fetch('/api/boards').then((r) => r.json()); } catch (e) { boardsList.innerHTML = '<div class="foot">Không dò được.</div>'; return; }
+  const local = ['localhost', '127.0.0.1', '[::1]'].includes(location.hostname);
+  boardsList.innerHTML = list.map((b) => {
+    const href = `${location.protocol}//${location.hostname}:${b.port}/`;
+    const lanOnly = b.host && !['127.0.0.1', 'localhost', '::1'].includes(b.host);
+    const reachable = local || lanOnly || b.old;
+    const name = b.old ? '(bản cũ)' : esc(b.name);
+    const tag = b.self ? '<span class="tag">bảng này</span>' : (!reachable ? '<span class="bnote">chỉ mở được trên máy chủ</span>' : '');
+    const meta = [`:${b.port}`, b.pending ? `${b.pending} yêu cầu chờ` : '', lanOnly ? 'LAN' : (b.old ? '' : 'chỉ máy chủ')].filter(Boolean).join(' · ');
+    const title = esc(b.dir || '');
+    const head = b.self || !reachable ? `<span class="bname">${name}</span>` : `<a class="bname" href="${href}" target="_blank" rel="noopener">${name}</a>`;
+    return `<div class="brow" title="${title}">${head}${tag}<div class="bmeta">${esc(meta)}</div></div>`;
+  }).join('') || '<div class="foot">Không có bảng nào.</div>';
+}
+function toggleBoards(open = boardsPanel.hidden) {
+  boardsPanel.hidden = !open; boardsBtn.setAttribute('aria-expanded', String(open));
+  if (open) loadBoards();
+}
+boardsBtn.addEventListener('click', () => toggleBoards());
+$('#boardsRefresh').addEventListener('click', loadBoards);
+document.addEventListener('pointerdown', (ev) => { if (!boardsPanel.hidden && !ev.target.closest('.boardsWrap')) toggleBoards(false); });
+document.addEventListener('keydown', (ev) => { if (ev.key === 'Escape' && !boardsPanel.hidden) toggleBoards(false); });
+
 /* ---------- boot ---------- */
 setTool('pen');
 try { const v = JSON.parse(localStorage.getItem('wb-view') || 'null'); if (v) Object.assign(view, v); else { const r = board.getBoundingClientRect(); view.x = r.width / 2; view.y = r.height / 3; } } catch (e) {}

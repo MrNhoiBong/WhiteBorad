@@ -8,6 +8,7 @@ Chạy qua ./wb (tự dùng .venv). Các lệnh chính:
   note / tex / svg / rect / arrow  vẽ lên bảng, mặc định đặt cạnh vùng đang xử lý
   patch ID [--text ...] | rm ID    sửa / xoá một mục
   done [RID]                       đánh dấu yêu cầu đã xong
+  boards                           liệt kê các bảng đang mở trên máy (cổng, thư mục)
 """
 import argparse
 import json
@@ -40,6 +41,8 @@ def free_port(start=8765):
     import socket
     for p in range(start, start + 200):
         with socket.socket() as s:
+            # như server (allow_reuse_address): cổng vừa dừng còn TIME_WAIT vẫn dùng lại được
+            s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             try:
                 s.bind(("0.0.0.0", p))
                 return p
@@ -101,6 +104,12 @@ def cmd_stop(a):
         pid = int(open(PID).read())
         os.kill(pid, signal.SIGTERM)
         os.remove(PID)
+        for _ in range(50):  # chờ server nhả cổng để start ngay sau đó giữ được cổng cũ
+            try:
+                os.kill(pid, 0)
+            except OSError:
+                break
+            time.sleep(0.1)
         print(f"đã dừng pid {pid}")
     except (OSError, ValueError):
         print("server không chạy")
@@ -300,6 +309,28 @@ def cmd_files(a):
         print(f"{f['size']:>12,}  {time.strftime('%m-%d %H:%M', time.localtime(f['t'] / 1000))}  {f['path']}")
 
 
+def cmd_boards(a):
+    import boards
+    found = boards.scan(extra=[port()])
+    if not found:
+        print("không có bảng nào đang chạy")
+        return
+    lan = []
+    try:
+        lan = subprocess.run(["hostname", "-I"], capture_output=True, text=True, timeout=2).stdout.split()
+    except (OSError, subprocess.SubprocessError):
+        pass
+    ip4 = next((x for x in lan if "." in x), None)
+    for b in found:
+        me = " ← bảng này" if b["port"] == port() and alive() else ""
+        if b.get("old"):
+            print(f"- :{b['port']}  (server bản cũ, chưa biết thư mục) · {b['pending']} yêu cầu chờ{me}")
+            continue
+        open_lan = b.get("host") not in ("127.0.0.1", "localhost", "::1")
+        where = f"http://{ip4}:{b['port']}/ (LAN)" if open_lan and ip4 else f"http://127.0.0.1:{b['port']}/ (chỉ máy này)"
+        print(f"- :{b['port']}  {b['name']} · {where} · {b['pending']} yêu cầu chờ · {b['dir']}{me}")
+
+
 def cmd_done(a):
     rid = current(a.rid)
     api(f"/api/request/{rid}/status", {"status": "done"})
@@ -321,6 +352,7 @@ def main():
     p.set_defaults(f=cmd_look)
     p = sp.add_parser("item"); p.add_argument("id"); p.set_defaults(f=cmd_item)
     sp.add_parser("files", help="liệt kê file người dùng đã tải lên").set_defaults(f=cmd_files)
+    sp.add_parser("boards", help="liệt kê các bảng đang mở trên máy").set_defaults(f=cmd_boards)
 
     def writer(name, f, **extra):
         p = sp.add_parser(name)
@@ -357,7 +389,7 @@ def main():
     p = sp.add_parser("done"); p.add_argument("rid", nargs="?"); p.set_defaults(f=cmd_done)
 
     a = ap.parse_args()
-    if a.cmd not in ("start", "stop", "status") and not alive():
+    if a.cmd not in ("start", "stop", "status", "boards") and not alive():
         sys.exit("server chưa chạy: ./wb start")
     a.f(a)
 

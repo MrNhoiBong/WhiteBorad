@@ -33,6 +33,8 @@ wb.py  ◄── Claude trong terminal (./wb …)
 | POST | `/api/clear` | xoá bảng |
 | GET | `/api/files` | danh sách file đã tải lên `{name,size,path,t}` |
 | GET | `/api/file/<tên>` | tải file về (luôn `attachment`) |
+| GET | `/api/info` | nhận diện bảng: `{app:"wb", name, dir, port, host, pid, pending, items}` |
+| GET | `/api/boards` | dò cổng 8765–8964 trên `127.0.0.1`, trả danh sách `/api/info` của các bảng đang chạy (`self` đánh dấu bảng này) |
 | POST | `/api/upload?name=&x=&y=` | thân là nội dung file thô; lưu vào `$WB_UPLOADS`, đặt thẻ tại `(x,y)` (`codefile` với file văn bản đến 1 MB, 📎 với file khác) và tạo yêu cầu báo Claude |
 
 Mặc định server chỉ nghe trên `127.0.0.1`; `wb start --host 0.0.0.0` mở cho LAN. Không có xác thực: đừng mở ra mạng ngoài.

@@ -38,6 +38,7 @@ Truy cập từ máy khác trong mạng LAN:
 ```bash
 ./wb start --host 0.0.0.0   # mở http://<IP LAN>:<cổng> trên máy khác
 ./wb files                  # liệt kê file đã tải lên
+./wb boards                 # liệt kê các bảng đang mở trên máy (cổng, thư mục)
 ```
 
 ## Trên bảng

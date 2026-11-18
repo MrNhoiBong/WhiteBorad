@@ -41,6 +41,13 @@ window.MathJax = {
     <div class="top">
       <div class="brand"><h1>Giấy nháp Claude</h1><span class="pill" id="status"><i></i><span>Đang kết nối…</span></span></div>
       <div class="spacer"></div>
+      <div class="boardsWrap">
+        <button class="wide" id="boardsBtn" type="button" aria-expanded="false" aria-controls="boards" title="Các bảng đang mở trên máy chủ">Bảng khác</button>
+        <div class="panel boards" id="boards" hidden>
+          <div class="bhead"><b>Bảng đang mở</b><button class="chip" id="boardsRefresh" type="button">Làm mới</button></div>
+          <div id="boardsList"></div>
+        </div>
+      </div>
       <button class="wide" id="clear" type="button">Xoá bảng</button>
       <button class="wide claude" id="chatOpen" type="button">✦ Trò chuyện</button>
     </div>

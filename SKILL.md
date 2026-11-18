@@ -34,6 +34,11 @@ WB/wb start [--port P] [--host 0.0.0.0]      # tạo ./.whiteboard/ (+ .venv ri�
 
 Khi người dùng muốn dừng: `WB/wb stop`.
 
+## Các bảng khác đang mở
+
+- `WB/wb boards` liệt kê mọi bảng đang chạy trên máy (dò cổng 8765–8964): cổng, tên thư mục dự án, URL (LAN hoặc chỉ máy này), số yêu cầu chờ; đánh dấu `← bảng này`. Chạy được từ bất kỳ thư mục nào, kể cả khi bảng của thư mục đó chưa chạy.
+- Trên giao diện: nút **Bảng khác** ở thanh trên cùng mở danh sách tương tự, có link sang từng bảng (dùng cùng hostname với trang đang xem). Bảng chỉ nghe `127.0.0.1` thì được ghi chú "chỉ mở được trên máy chủ" khi xem từ máy khác.
+
 ## Quy tắc trả lời
 
 - **Không để tên Claude vào hình**: mọi mục vẽ lên bảng (note, tex, svg, tiêu đề hình) không chứa chữ "Claude"; giao diện cũng không gắn nhãn "✦ Claude" lên mục trên bảng.
@@ -73,6 +78,7 @@ WB/wb done <id>         # đóng yêu cầu đó, nếu không wait sẽ báo l�
 | `wb patch ID [--text\|--file\|--svgfile\|--at\|--color]`, `wb rm ID…` | Sửa, xoá |
 | `wb show [RID] [--pending]`, `wb done [RID]` | Xem lại hoặc đóng yêu cầu |
 | `wb files` | Liệt kê file người dùng đã tải lên (đường dẫn tuyệt đối) |
+| `wb boards` | Liệt kê các bảng đang mở trên máy (cổng, thư mục, URL) |
 
 Màu ghi chú: `yellow`, `pink`, `sky`, `mint`, `violet`. Màu nét (`rect`, `arrow`): `ink`, `red`, `blue`, `green`, `amber`, `violet`.
 

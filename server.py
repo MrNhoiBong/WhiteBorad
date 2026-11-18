@@ -30,6 +30,10 @@ MAX_PREVIEW = 1024 * 1024  # file văn bản lớn hơn mức này chỉ có th�
 TEXT_EXT = {".py", ".c", ".h", ".cc", ".cpp", ".cxx", ".hpp", ".hh", ".md", ".txt", ".java", ".js", ".ts", ".sh",
             ".sql", ".json", ".yaml", ".yml", ".xml", ".html", ".css", ".csv", ".tex", ".ini", ".toml", ".log"}
 
+# thư mục dự án của bảng (cha của .whiteboard), dùng để nhận diện bảng trong danh sách bảng đang mở
+HOME_DIR = os.path.dirname(DATA) if os.path.basename(DATA) == ".whiteboard" else DATA
+SERVE = {"host": "127.0.0.1", "port": 8765, "started": 0}
+
 lock = threading.RLock()
 state = {"items": {}, "chat": []}
 clients = []  # list[queue.Queue]
@@ -282,6 +286,13 @@ def op_chat(body):
     return {"ok": True, "id": msg["id"]}
 
 
+def info():
+    """Nhận diện bảng này cho `wb boards` và danh sách "Bảng khác" trên giao diện."""
+    return {"app": "wb", "name": os.path.basename(HOME_DIR) or HOME_DIR, "dir": HOME_DIR, "port": SERVE["port"],
+            "host": SERVE["host"], "pid": os.getpid(), "started": SERVE["started"],
+            "pending": len(list_reqs("pending")), "items": len(state["items"])}
+
+
 class H(BaseHTTPRequestHandler):
     server_version = "wb/1"
 
@@ -340,6 +351,14 @@ class H(BaseHTTPRequestHandler):
             return self.send_json(it or {"error": "not found"}, 200 if it else 404)
         if p == "/api/files":
             return self.send_json(list_files())
+        if p == "/api/info":
+            return self.send_json(info())
+        if p == "/api/boards":
+            import boards
+            out = boards.scan(extra=[SERVE["port"]])
+            for b in out:
+                b["self"] = b["port"] == SERVE["port"]
+            return self.send_json(out)
         if p.startswith("/api/file/"):
             name = unquote(p[len("/api/file/"):])
             fp = os.path.join(UPLOADS, safe_name(name))
@@ -458,6 +477,7 @@ def main():
     ap.add_argument("--host", default="127.0.0.1")
     ap.add_argument("--port", type=int, default=8765)
     a = ap.parse_args()
+    SERVE.update(host=a.host, port=a.port, started=now_ms())
     load()
     os.makedirs(UPLOADS, exist_ok=True)
     srv = ThreadingHTTPServer((a.host, a.port), H)

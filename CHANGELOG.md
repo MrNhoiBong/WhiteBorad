@@ -1,5 +1,13 @@
 # Nhật ký thay đổi
 
+## 2026-11-16
+
+### Tính năng mới
+- **Xem các bảng khác đang mở:** lệnh `wb boards` và nút **Bảng khác** trên giao diện liệt kê mọi bảng đang chạy trên máy (cổng, thư mục, URL LAN/chỉ máy này, số yêu cầu chờ). Server có thêm `/api/info` và `/api/boards`; phần dò cổng nằm trong `boards.py`.
+
+### Sửa lỗi
+- `wb stop` chờ server thoát hẳn, và việc chọn cổng dùng `SO_REUSEADDR`, nên `stop` rồi `start` ngay giữ được cổng cũ thay vì nhảy sang cổng kế tiếp.
+
 ## 2026-11-06
 
 ### Tài liệu
